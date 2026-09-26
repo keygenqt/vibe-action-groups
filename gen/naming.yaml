@@ -1,0 +1,42 @@
+# Vibe Action — naming
+# Generate code naming suggestions based on a description
+
+version: 0.0.2
+
+name: naming
+about: Generate code naming suggestions based on a description
+
+api:
+  output: dialog
+  input: query_prompt
+
+actions:
+  # LLM generates 5-10 naming options based on the description
+  - tag: tag_name_suggestions
+    run: medium
+    reg: '^[^\n]+(?:\n[^\n]+)*$'
+    val:
+      - name: query
+        data: query_prompt
+    action: |
+      [Task]
+      Generate 5-10 high-quality, professional programming naming suggestions based on the description.
+      Strictly follow the programming language or style constraints requested in the description if specified.
+
+      [Rules]
+      1. Write strictly in English.
+      2. Output each suggestion on a new line.
+      3. DO NOT add numbers, dots, dashes, or any prefix before suggestions.
+      4. DO NOT wrap suggestions in backticks, quotes, or code blocks.
+      5. DO NOT add any explanation or text — suggestions only.
+
+      [Wrong]
+      1. `sort_actions`
+      2. `sort_deps`
+
+      [Right]
+      sort_actions
+      sort_deps
+
+      [Query]
+      {query}

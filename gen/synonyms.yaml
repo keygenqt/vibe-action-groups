@@ -1,0 +1,39 @@
+# Vibe Action — synonyms
+# Find programming/technical synonyms for a word
+
+version: 0.0.2
+
+name: synonyms
+about: Find programming/technical synonyms for a word
+
+api:
+  output: dialog
+  input: query_raw
+
+actions:
+  # LLM generates 5 technical alternatives
+  - tag: tag_synonyms_list
+    run: medium
+    reg: '^([^\n]+\n)*[^\n]+$'
+    val:
+      - name: concept
+        data: query_raw
+        fail: 'is:empty:not'
+    action: |
+      [Task]
+      Give me 5 professional programming terms or alternatives for the concept below.
+      Each option must be a single word.
+      Write each option strictly on a new line without numbering.
+
+      [Concept]
+      {concept}
+
+  # Lowercase each alternative and join into a single string
+  - tag: tag_synonyms
+    run: value
+    reg: '.+'
+    val:
+      - name: list
+        data: tag_synonyms_list
+        mods: 'split|lower|join'
+    action: '{list}'

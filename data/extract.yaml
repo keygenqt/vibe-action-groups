@@ -1,0 +1,57 @@
+# Vibe Action — extract
+# Extract structured data or matching lines from text and logs
+
+version: 0.0.2
+
+name: extract
+about: Extract structured data or matching lines from text and logs
+
+args:
+  - name: arg_file
+    short: 'f'
+    input: string
+    help: Path or URL to the log or text file
+
+api:
+  output: dialog
+  input: query_prompt
+  args:
+    arg_file: query_file_path
+
+actions:
+  # Step 1 — filter log lines by relevance to the query.
+  - tag: llm_log
+    run: large
+    val:
+      - name: 'search'
+        data: 'query_raw'
+      - name: 'val_log'
+        data: 'arg_file'
+        mods: 'fetch|text'
+        fail: 'is:empty:not'
+        each: true
+    reg: '^[^\n]+$'
+    action: |
+      [Task]
+      You are a log filter. Decide if the log line is relevant to the query.
+      The query describes what to find in natural language.
+      If the line is relevant — output the EXACT line character-for-character, preserving original casing.
+      If the line is NOT relevant — output only a single dash: "-"
+      Do NOT skip lines. Process every line.
+      Do NOT modify, normalize, or reformat the line in any way.
+
+      [Query]
+      {search}
+
+      [Line]
+      {val_log}
+
+  # Step 2 — collect the relevant lines back into one block.
+  - tag: out_log
+    run: value
+    reg: '^([^\n]+\n)*[^\n]*$'
+    val:
+      - name: 'llm_result'
+        data: 'llm_log'
+        mods: 'split|filter:eq:-|uniq|join'
+    action: '{llm_result}'

@@ -1,0 +1,43 @@
+# Vibe Action — mock
+# Generate realistic mock data arrays (JSON, YAML, CSV) for testing
+
+version: 0.0.2
+
+name: mock
+about: Generate realistic mock data arrays (JSON, YAML, CSV) for testing
+
+args:
+  - name: arg_format
+    short: 'f'
+    input: string
+    default: json
+    help: 'Output format: json, yaml, csv (default: json)'
+
+api:
+  output: dialog
+  input: query_prompt
+  args:
+    arg_format: query_raw
+
+actions:
+  # LLM generates structured mock data in the requested format
+  - tag: tag_mock
+    run: medium
+    reg: '.+'
+    val:
+      - name: format
+        data: arg_format
+      - name: query
+        data: query_prompt
+    action: |
+      [Task]
+      Generate a realistic mock data array based on the user's [Query].
+      Format the output strictly as valid raw {format} data.
+
+      [Example]
+      ```{format}
+      <code>
+      ```
+
+      [Query]
+      {query}

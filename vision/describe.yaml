@@ -1,0 +1,58 @@
+# Vibe Action — describe
+# Describe a screenshot from clipboard for text-only LLMs (Cmd+Shift+Ctrl+4, Ctrl+Print)
+
+version: 0.0.2
+
+name: describe
+about: Describe a screenshot from clipboard for text-only LLMs (Cmd+Shift+Ctrl+4, Ctrl+Print)
+notify: true
+
+api:
+  output: dialog
+  input: query_image
+
+actions:
+  # Extract raw visual description from the screenshot
+  - tag: tag_raw
+    run: vision
+    reg: '.+'
+    val:
+      - name: image
+        data: query_image
+        when: 'is:empty:not'
+      - name: image
+        data: query_clipboard_image
+        when: 'is:empty:not'
+      - name: image
+        mods: 'screenshot|text'
+        fail: 'is:empty:not'
+    action: |
+      {image}
+
+      [Task]
+      Describe this screenshot in rich detail.
+      This is a screenshot of an application interface, not a code extraction task.
+      Include:
+      - All visible text (if any)
+      - Layout, UI elements, objects, people, animals
+      - What is happening in the screenshot
+      - Colors: list each distinct color with its hex code, and what it is used for
+      Be thorough.
+
+  # Format the raw description into clean Markdown
+  - tag: tag_md
+    run: medium
+    reg: '.+'
+    val:
+      - name: input
+        data: tag_raw
+    action: |
+      [Task]
+      Format the following description into clean Markdown.
+      - Use headers, lists, bold, and code blocks where appropriate
+      - Preserve ALL content — do not remove or summarize anything
+      - Keep the original language and wording
+      - Output ONLY the formatted Markdown
+
+      [Input]
+      {input}

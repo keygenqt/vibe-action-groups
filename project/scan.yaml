@@ -1,0 +1,56 @@
+# Vibe Action — scan
+# Scan project codebase and export as structured JSON
+
+version: 0.0.2
+
+name: scan
+about: Scan project codebase and export as structured JSON
+notify: true
+
+api:
+  output: dialog
+  input: query_project_path
+
+actions:
+  # Validate path is a directory and resolve to absolute
+  - tag: tag_resolve
+    run: value
+    reg: '.+'
+    val:
+      - name: path
+        data: query_project_path
+        mods: 'resolve:dir'
+        fail: 'is:empty:not'
+    action: '{path}'
+
+  # Scan, parse AST, and format as JSON array
+  - tag: tag_json
+    run: value
+    val:
+      - name: json
+        data: tag_resolve
+        mods: 'scan|ast|format:json'
+    action: '{json}'
+
+  # Build output path
+  - tag: tag_path
+    run: value
+    reg: '.+'
+    val:
+      - name: dir
+        data: system_dir_download
+      - name: pid
+        data: system_pid
+    action: '{dir}/vibe-export-{pid}.json'
+
+  # Save and report
+  - tag: tag_save
+    run: value
+    reg: '.+'
+    val:
+      - name: path
+        data: tag_path
+      - name: json
+        data: tag_json
+        mods: 'file:{tag_path}'
+    action: 'Saved to {path}'

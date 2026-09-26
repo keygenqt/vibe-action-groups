@@ -1,0 +1,58 @@
+# Vibe Action — explain
+# Explain what the selected code does in simple terms
+
+version: 0.0.2
+
+name: explain
+about: Explain what the selected code does in simple terms
+notify: true
+
+api:
+  output: replace
+  input: query_raw
+
+actions:
+  # Read input: file path if valid, otherwise raw text
+  - tag: tag_content
+    run: value
+    reg: '.+'
+    val:
+      - name: content
+        data: query_raw
+        when: 'is:path'
+        mods: 'fetch|text'
+      - name: content
+        data: query_raw
+        fail: 'is:empty:not'
+    action: '{content}'
+
+  # Add summary and detailed comments to the code
+  - tag: tag_explanation
+    run: medium
+    reg: '.+'
+    val:
+      - name: lang
+        data: system_language
+      - name: content
+        data: tag_content
+    action: |
+      [Task]
+      Output the original code unchanged, with explanatory comments added above each logical block.
+      Do NOT describe or quote the code — output the actual runnable code with comments inserted into it.
+
+      [Rules]
+      1. Keep the code logic identical — do not modify, remove, or quote lines.
+      2. Add a brief comment above each logical block explaining the constructs, macros, or types used.
+      3. Use the comment syntax of the input language (e.g., `// ` or `# `).
+      4. Wrap the entire output in a single Markdown code block with the correct language tag.
+      5. Comment language: {lang}
+
+      [Example]
+      ```javascript
+      // Creates a debounced version of fn
+      // delay — wait time in ms before executing fn
+      let x = 5;
+      ```
+
+      [Code]
+      {content}

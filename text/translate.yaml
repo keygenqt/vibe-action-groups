@@ -1,0 +1,57 @@
+# Vibe Action — translate
+# Translate text or files to another language
+
+version: 0.0.2
+
+name: translate
+about: Translate text or files to another language
+notify: true
+
+args:
+  - name: arg_to
+    short: 'l'
+    input: string
+    default: 'Russian'
+    help: Target language (e.g., Russian, English, Chinese)
+
+api:
+  output: replace
+  input: query_raw
+  args:
+    arg_to: query_raw
+
+actions:
+  # Read input: file path if valid, otherwise raw text
+  - tag: tag_content
+    run: value
+    reg: '.+'
+    val:
+      - name: content
+        data: query_raw
+        when: 'is:path'
+        mods: 'fetch|text'
+      - name: content
+        data: query_raw
+        fail: 'is:empty:not'
+    action: '{content}'
+
+  # LLM translates text, preserving code and proper names
+  - tag: tag_translated
+    run: medium
+    reg: '.+'
+    val:
+      - name: to
+        data: arg_to
+      - name: text
+        data: tag_content
+    action: |
+      [Task]
+      Translate the entire [Text] to the language specified in [User].
+      Do not translate proper names, code, or comments inside code blocks.
+      Reply with the full translated text.
+
+      [User]
+      {to}
+
+      [Text]
+      {text}

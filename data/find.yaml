@@ -1,0 +1,76 @@
+# Vibe Action — find
+# Semantic file finder — finds files by meaning, not just name
+
+version: 0.0.2
+
+name: find
+about: Semantic file finder — finds files by meaning, not just name
+
+args:
+  - name: arg_path
+    short: 'p'
+    input: string
+    default: '.'
+    help: 'Directory to search in (default: current)'
+
+api:
+  output: dialog
+  input: query_prompt
+  args:
+    arg_path: query_project_path
+
+actions:
+  # Collect all text files in the directory
+  - tag: tag_files
+    run: cmd
+    val:
+      - name: path
+        data: arg_path
+        fail: 'is:empty:not'
+    action: find {path} -type f -exec grep -Iq . {} \; -print
+
+  # Build prompt with file path and content for each file
+  - tag: tag_prompts
+    run: cmd
+    val:
+      - name: query
+        data: query_prompt
+      - name: file
+        data: tag_files
+        mods: 'trim'
+        fail: 'is:empty:not'
+        each:
+          split: '\n'
+          merge: '\x1F'
+    action: |
+      printf '%s\n' '[Task]'
+      printf '%s\n' 'Check if the [Content] code/comments contain the technical [Query] word, function name, or meaning.'
+      printf '%s\n' 'If YES — print ONLY the file path.'
+      printf '%s\n' 'If NO — print ONLY: -'
+      printf '\n%s\n' '[Query]'
+      printf '%s\n' {query}
+      printf '\n%s\n' '[Content]'
+      cat {file}
+      printf '\n%s\n' '[File]'
+      printf '%s\n' {file}
+
+  # LLM evaluates each file against the query
+  - tag: tag_matches
+    run: medium
+    reg: '.+'
+    val:
+      - name: prompt
+        data: tag_prompts
+        each:
+          split: '\x1F'
+          merge: '\n'
+    action: '{prompt}'
+
+  # Filter out non-matching entries, deduplicate, join
+  - tag: tag_find
+    run: value
+    val:
+      - name: result
+        data: tag_matches
+        mods: 'split|filter:eq:-|uniq|sort|join'
+    action: '{result}'

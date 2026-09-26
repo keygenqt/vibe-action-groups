@@ -1,0 +1,217 @@
+# Vibe Action — commit
+# AI-generated commit message
+
+version: 0.0.2
+
+name: commit
+about: AI-generated commit message
+
+args:
+  - name: arg_dry_run
+    short: 'd'
+    input: bool
+    default: false
+    help: 'Print commit message without committing'
+
+api:
+  output: dialog
+  input: query_project_path
+
+actions:
+  - tag: tag_project_path
+    run: value
+    val:
+      - name: path
+        data: query_project_path
+        when: 'is:empty:not'
+      - name: path
+        data: './'
+    action: '{path}'
+
+  # Overview for the final model: file statuses (including untracked)
+  - tag: tag_status
+    run: cmd
+    val:
+      - name: path
+        data: tag_project_path
+    action: cd {path} && git status --porcelain
+
+  # Change statistics — gives the model a sense of scale
+  - tag: tag_stat
+    run: cmd
+    val:
+      - name: path
+        data: tag_project_path
+    action: cd {path} && git diff HEAD --stat 2>/dev/null || true
+
+  # Recent commit style — the model adapts to project conventions.
+  # Falls back gracefully on a repo with no commits yet.
+  - tag: tag_recent_commits
+    run: cmd
+    val:
+      - name: path
+        data: tag_project_path
+    action: cd {path} && git log --oneline -5 --no-decorate 2>/dev/null || echo "No commits yet"
+
+  # ALL changed files, including untracked.
+  # -uall: expand untracked directories into individual files
+  # --no-renames: renames shown as delete+add (avoids "old -> new" paths)
+  # core.quotepath=false + sed: keeps paths with spaces and non-ASCII intact
+  - tag: tag_changed_files
+    run: cmd
+    reg: '.+'
+    val:
+      - name: path
+        data: tag_project_path
+    action: cd {path} && git -c core.quotepath=false status --porcelain -uall --no-renames | sed 's/^...//'
+
+  # Diff per file; untracked files — content snippet; everything size-limited
+  - tag: tag_file_diff
+    run: cmd
+    val:
+      - name: path
+        data: tag_project_path
+      - name: file
+        data: tag_changed_files
+        mods: 'trim'
+        each:
+          split: '\n'
+          merge: '\x1F'
+    action: |
+      cd {path}
+      f={file}
+      if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+        # Tracked: diff is safe even for binaries ("Binary files differ")
+        git diff HEAD -- "$f" 2>/dev/null | head -c 6000
+      elif [ -d "$f" ]; then
+        echo "=== NEW DIRECTORY: $f ==="
+      elif [ ! -s "$f" ]; then
+        # Empty file: grep binary detection false-positives on these
+        echo "=== NEW EMPTY FILE: $f ==="
+      elif grep -Iq . "$f" 2>/dev/null; then
+        # Untracked text file
+        echo "=== NEW FILE: $f ==="
+        head -c 3000 "$f"
+      else
+        # Untracked binary: existence + size only
+        echo "=== NEW BINARY FILE: $f ($(du -h "$f" | cut -f1)) ==="
+      fi
+
+  # Small model: essence of the per-file change, no noise
+  - tag: tag_file_summary
+    run: medium
+    reg: '.+'
+    val:
+      - name: diff
+        data: tag_file_diff
+        each:
+          split: '\x1F'
+          merge: '\n'
+    action: |
+      [Task]
+      Describe the PURPOSE of this change in one phrase (max 15 words).
+      - Focus on WHAT and WHY, not mechanics.
+      - Deleted file: what was removed and, if obvious, what replaced it.
+      - New file: what it is and its role.
+      - Binary/empty file stub: just state what was added.
+      - Ignore trivial changes (formatting, typos).
+      Format: <path>: <phrase>
+
+      [Example]
+      book/src/assets/css/index/body.css: deleted, merged into shared main.css
+
+      [Diff]
+      {diff}
+
+  # Final model: now has status, stats, history and summaries
+  - tag: tag_commit_message
+    run: large
+    reg: '.+'
+    val:
+      - name: recent
+        data: tag_recent_commits
+      - name: status
+        data: tag_status
+      - name: stat
+        data: tag_stat
+      - name: summaries
+        data: tag_file_summary
+    action: |
+      [Task]
+      Write ONE conventional commit message (will appear in a git-cliff changelog).
+      Rules:
+      - Format strictly: <type>: <message> (NO scope/parentheses)
+      - Types: feat, fix, docs, refactor, test, chore, style, perf
+      - Max 100 chars, imperative mood, lowercase after type
+      - Type = the most significant change
+      - Synthesize ACROSS summaries: merge the 1-2 most significant changes
+        into one sentence with "and" or a comma
+      - Drop trivial changes: config tweaks, version bumps, formatting
+      - Do NOT just copy one file summary — combine what matters
+      - NEVER use single quotes, double quotes or backticks (shell-safe output)
+      - Recent commits show the project style — match their quality
+
+      [Examples — style reference from unrelated projects, do NOT reuse their wording]
+      [Bad]  fix: fix bug
+      [Good] fix: handle empty response in payment webhook
+      [Bad]  feat: add stuff
+      [Good] feat: add retry with backoff to s3 uploads
+      [Bad]  docs: update docs
+      [Good] docs: document rate limiting in api reference
+
+      [Synthesis example — how to merge summaries]
+      Input summaries:
+      - api/webhooks.rs → retry failed deliveries with exponential backoff
+      - api/routes.rs → return 400 instead of 500 on empty payload
+      - config.rs → bump default timeout constant
+      Output:
+      fix: retry failed webhooks and return 400 on empty payloads
+
+      [Recent commits]
+      {recent}
+
+      [Changed files with status]
+      {status}
+
+      [Diff stat]
+      {stat}
+
+      [Per-file summaries]
+      {summaries}
+
+  # Actual commit — dead-tagged (skipped) in dry-run mode via when guard.
+  # ask only fires when the action is not dead-tagged.
+  - tag: tag_commit_exec
+    run: cmd
+    ask: true
+    val:
+      # Dead-tag guard: `dry` is not used in action, it's a switch.
+      # If ANY val candidate fails its `when`, the whole tag resolves
+      # to an empty string (dead tag) and the action never runs.
+      - name: dry
+        data: arg_dry_run
+        when: 'contains:false'
+      - name: path
+        data: tag_project_path
+      - name: msg
+        data: tag_commit_message
+        mods: 'lower'
+    action: cd {path} && git add . && git commit -m {msg}
+
+  # Final output — message in dry-run, commit result otherwise
+  - tag: tag_commit
+    run: cmd
+    val:
+      - name: dry
+        data: arg_dry_run
+      - name: exec
+        data: tag_commit_exec
+      - name: msg
+        data: tag_commit_message
+        mods: 'lower'
+    action: |
+      if [ {dry} = 'true' ]; then
+        printf '%s' {msg}
+      else
+        printf '%s' {exec}
+      fi

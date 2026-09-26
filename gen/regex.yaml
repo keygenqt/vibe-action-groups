@@ -1,0 +1,46 @@
+# Vibe Action — regex
+# Generate a regular expression pattern based on your description
+
+version: 0.0.2
+
+name: regex
+about: Generate a regular expression pattern based on your description
+
+args:
+  - name: arg_example
+    short: 'e'
+    input: string
+    help: Optional example string to test the pattern against
+    default: ''
+
+api:
+  output: dialog
+  input: query_prompt
+  args:
+    arg_example: query_raw
+
+actions:
+  # LLM generates regex pattern, optionally testing against example
+  - tag: tag_regex
+    run: medium
+    reg: '^[^\n]+$'
+    val:
+      - name: query
+        data: query_prompt
+      - name: example
+        data: arg_example
+    action: |
+      [Task]
+      Generate a valid regular expression pattern based on the user's [Query].
+      If an [Example] string is provided, ensure the generated regex matches it correctly.
+
+      [Rules]
+      1. Output ONLY the raw regex pattern.
+      2. Do NOT wrap it in backticks, slashes (/ /), or markdown code blocks.
+      3. Output exactly 1 line.
+
+      [Query]
+      {query}
+
+      [Example]
+      {example}

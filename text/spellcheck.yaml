@@ -1,0 +1,72 @@
+# Vibe Action — spellcheck
+# Check and fix spelling in text or files
+
+version: 0.0.2
+
+name: spellcheck
+about: Check and fix spelling in text or files
+notify: true
+
+api:
+  output: replace
+  input: query_raw
+
+actions:
+  # Read input: file path if valid, otherwise raw text
+  - tag: tag_content
+    run: value
+    reg: '.+'
+    val:
+      - name: content
+        data: query_raw
+        when: 'is:path'
+        mods: 'fetch|text'
+      - name: content
+        data: query_raw
+        fail: 'is:empty:not'
+    action: '{content}'
+
+  # LLM checks if text contains errors
+  - tag: tag_check_errors
+    run: small
+    reg: 'DIRTY|CLEAR'
+    val:
+      - name: content
+        data: tag_content
+    action: |
+      [Task]
+      Analyze the text below for typos, spelling mistakes, and grammar errors.
+      If errors exist, reply strictly with "DIRTY". If no errors exist, reply strictly with "CLEAR".
+
+      [Text]
+      {content}
+
+  # If errors found, pass text through; otherwise return "No errors found."
+  - tag: tag_check_errors_filter
+    run: cmd
+    reg: '.+'
+    val:
+      - name: check
+        data: tag_check_errors
+      - name: content
+        data: tag_content
+    action: |
+      case {check} in
+        *DIRTY*) printf '%s' {content} ;;
+        *) printf '%s' "No errors found." ;;
+      esac
+
+  # LLM fixes all errors while preserving formatting
+  - tag: tag_checked
+    run: medium
+    reg: '.+'
+    val:
+      - name: text
+        data: tag_check_errors_filter
+    action: |
+      [Task]
+      Fix all spelling mistakes, typos, and grammar errors in the text below.
+      Strict rules: Preserve all code syntax, markdown tags, and formatting exactly as-is.
+
+      [Text]
+      {text}

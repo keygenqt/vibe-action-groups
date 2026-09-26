@@ -1,0 +1,40 @@
+# Vibe Action — comment
+# Replace TODO with a meaningful comment
+
+version: 0.0.2
+
+name: comment
+about: Replace TODO with a meaningful comment
+notify: true
+
+api:
+  output: replace
+  input: query_raw
+
+actions:
+  - tag: tag_comment
+    run: medium
+    val:
+      - name: content
+        data: query_raw
+        when: 'is:path'
+        mods: 'fetch|text'
+      - name: content
+        data: query_raw
+        fail: 'is:empty:not'
+    action: |
+      [Task]
+      Replace every "TODO" and "@todo" in the code with a concise technical comment in English.
+      The token "todo" must not remain in the output — not as "@todo", not as "TODO".
+
+      [Rules]
+      1. Do not change the original code.
+      2. Keep the original comment marker.
+      3. File/module-level comment: a brief description in TWO short sentences (one per line).
+      4. Class/struct/field/method comment: a brief description, max 7 words.
+      6. Preserve exact indentation and structure.
+      7. Wrap the entire output in a single code block. The block language MUST match the input file's language.
+      8. Every comment must be unique and describe only its own element, not copied from another.
+
+      [Code]
+      {content}

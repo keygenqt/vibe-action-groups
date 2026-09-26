@@ -1,0 +1,49 @@
+# Vibe Action — review
+# Critically analyze code for bugs and flaws using a powerful model
+
+version: 0.0.2
+
+name: review
+about: Critically analyze code for bugs and flaws using a powerful model
+notify: true
+
+api:
+  output: dialog
+  input: query_raw
+
+actions:
+  # Read input: file path if valid, otherwise raw text
+  - tag: tag_content
+    run: value
+    reg: '.+'
+    val:
+      - name: content
+        data: query_raw
+        when: 'is:path'
+        mods: 'fetch|text'
+      - name: content
+        data: query_raw
+        fail: 'is:empty:not'
+    action: '{content}'
+
+  # Analyze code for bugs and generate technical recommendations
+  - tag: tag_review
+    run: large
+    reg: '.+'
+    val:
+      - name: lang
+        data: system_language
+      - name: content
+        data: tag_content
+    action: |
+      [Task]
+      Analyze the provided code for logic flaws, concurrency bugs, memory leaks, and performance bottlenecks.
+
+      [Rules]
+      - Write strictly in {lang}. Keep feedback concise, blunt, and highly technical.
+      - If the code has no flaws, output exactly one word: PERFECT.
+      - Format each issue as a clear block: standard bullet point for the description, followed by a new line with a prefix "  Fix: " and the exact 1-line code patch.
+      - Do NOT write explanation inside the fix line, provide ONLY the clean code patch.
+
+      [Code to Review]
+      {content}

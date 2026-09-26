@@ -1,0 +1,51 @@
+# Vibe Action — whois
+# Identify a person from a screenshot
+
+version: 0.0.2
+
+name: whois
+about: Identify a person from a screenshot
+notify: true
+
+api:
+  output: dialog
+  input: query_image
+
+actions:
+  # Identify and analyze tech figures in the image
+  - tag: tag_identity
+    run: vision
+    val:
+      # image
+      - name: 'image'
+        data: 'query_image'
+        when: 'is:empty:not'
+      - name: 'image'
+        data: 'query_clipboard_image'
+        when: 'is:empty:not'
+      - name: 'image'
+        mods: 'screenshot|text'
+        fail: 'is:empty:not'
+      # lang
+      - name: 'lang'
+        data: 'system_language'
+    reg: '.+'
+    action: |
+      {image}
+
+      [Task]
+      Identify and analyze all public tech figures in this image from left to right.
+
+      [Rules]
+      - For every person found, output a concise summary using the exact structure from [Example].
+      - Remove any metadata or inline hints.
+      - No introduction, conclusion, or conversational fluff.
+      - At the beginning, add a brief description of the historical photo or event.
+      - Language: {lang}.
+
+      [Example]
+      brief description of the photo or event
+
+      1. **Full Name**
+         Role: contribution
+         Impact: one sentence about their impact
