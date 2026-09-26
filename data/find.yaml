@@ -66,11 +66,23 @@ actions:
           merge: '\n'
     action: '{prompt}'
 
-  # Filter out non-matching entries, deduplicate, join
-  - tag: tag_find
+  # Filter out non-matching entries
+  - tag: tag_filter
     run: value
     val:
       - name: result
         data: tag_matches
-        mods: 'split|filter:eq:-|uniq|sort|join'
+        mods: 'split|filter:eq:-'
+    action: '{result}'
+
+  # Deduplicate, sort, join
+  - tag: tag_find
+    run: value
+    val:
+      - name: result
+        data: tag_filter
+        when: 'compare:lte:1'
+        mods: 'split|uniq|sort|join'
+      - name: result
+        data: tag_filter
     action: '{result}'

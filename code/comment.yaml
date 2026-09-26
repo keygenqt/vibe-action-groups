@@ -15,6 +15,8 @@ actions:
   - tag: tag_comment
     run: medium
     val:
+      - name: raw
+        data: query_raw
       - name: content
         data: query_raw
         when: 'is:path'
@@ -24,7 +26,7 @@ actions:
         fail: 'is:empty:not'
     action: |
       [Task]
-      Replace every "TODO" and "@todo" in the code with a concise technical comment in English.
+      REPLACE every "TODO" and "@todo" in the code with a concise technical comment in English.
       The token "todo" must not remain in the output — not as "@todo", not as "TODO".
 
       [Rules]
@@ -32,9 +34,46 @@ actions:
       2. Keep the original comment marker.
       3. File/module-level comment: a brief description in TWO short sentences (one per line).
       4. Class/struct/field/method comment: a brief description, max 7 words.
-      6. Preserve exact indentation and structure.
-      7. Wrap the entire output in a single code block. The block language MUST match the input file's language.
-      8. Every comment must be unique and describe only its own element, not copied from another.
+      5. Preserve exact indentation and structure.
+      6. Wrap the entire output in a single code block. ```<language marker> ... ```
+      7. Every comment must be unique and describe only its own element, not copied from another.
+
+      Commonly used language markers:
+      - ets — ArkTS (.ets)
+      - sh — Shell (.sh)
+      - bat — Batch (.bat)
+      - cs — C# (.cs)
+      - dart — Dart (.dart)
+      - go — Go (.go)
+      - java — Java (.java)
+      - js — JavaScript (.js)
+      - kt — Kotlin (.kt)
+      - py — Python (.py)
+      - rs — Rust (.rs)
+      - swift — Swift (.swift)
+      - ts — TypeScript (.ts)
+
+      [Example]
+      Input:
+      ```py
+      # @todo
+
+      # @todo
+      def calculate():
+          pass
+      ```
+
+      Output:
+      ```py
+      # Handles metric calculation.
+
+      # Computes and returns metrics.
+      def calculate():
+          pass
+      ```
+
+      [Query Raw]
+      {raw}
 
       [Code]
       {content}
