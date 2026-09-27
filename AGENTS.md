@@ -19,6 +19,10 @@ vibe-action <group> <action> [query] [args...]
 ├── AGENTS.md
 ├── LICENSE
 ├── README.md
+├── ci
+│   ├── spdx.yaml
+│   ├── summary.yaml
+│   └── validate.yaml
 ├── code
 │   ├── comment.yaml
 │   ├── explain.yaml
@@ -46,14 +50,13 @@ vibe-action <group> <action> [query] [args...]
 
 ## Groups
 
-| Group     | Actions                       | About                           |
-| --------- | ----------------------------- | ------------------------------- |
-| `code`    | comment, explain, review      | Work with code                  |
-| `data`    | extract, fetch, find          | Fetch and extract external data |
-| `gen`     | mock, naming, regex, synonyms | Generate patterns and data      |
-| `project` | commit, scan                  | Whole-project operations        |
-| `text`    | spellcheck, tone, translate   | Work with text                  |
-| `vision`  | describe, whois               | Work with images                |
+- `ci` — spdx, summary, validate — pre-review and CI checks
+- `code` — comment, explain, review — work with code
+- `data` — extract, fetch, find — fetch and extract external data
+- `gen` — mock, naming, regex, synonyms — generate patterns and data
+- `project` — commit, scan — whole-project operations
+- `text` — spellcheck, tone, translate — work with text
+- `vision` — describe, whois — work with images
 
 ## How groups are loaded
 
@@ -67,13 +70,11 @@ groups:
     about: Work with code
 ```
 
-| Field   | Description                                           |
-| ------- | ----------------------------------------------------- |
-| `git`   | Repository URL, cloned once into the cache            |
-| `path`  | Local dir, or subfolder inside the clone (`/` = root) |
-| `ref`   | Branch, tag, or commit pin (git only)                 |
-| `name`  | CLI group name (`vibe-action <name> <action>`)        |
-| `about` | Short description for help                            |
+- `git` — repository URL, cloned once into the cache
+- `path` — local dir, or subfolder inside the clone (`/` = root)
+- `ref` — branch, tag, or commit pin (git only)
+- `name` — CLI group name (`vibe-action <name> <action>`)
+- `about` — short description for help
 
 Either `git` or `path` is required. A git source is cloned once and re-pulled after `vibe-action clean`.
 
@@ -103,26 +104,22 @@ actions:
 
 ### Top-level fields
 
-| Field     | Type   | Required | Description                                       |
-| --------- | ------ | -------- | ------------------------------------------------- |
-| `version` | string | yes      | Must match `PIPELINE_VERSION` (currently `0.0.2`) |
-| `name`    | string | yes      | Action name; becomes the CLI subcommand           |
-| `about`   | string | yes      | Short description for `--help`                    |
-| `notify`  | bool   | no       | Desktop notification on completion                |
-| `check`   | string | no       | Regex validating the final pipeline result        |
-| `args`    | list   | no       | CLI argument definitions                          |
-| `api`     | object | no       | IDE plugin metadata (ignored by CLI runtime)      |
-| `actions` | list   | yes      | Pipeline steps                                    |
+- `version` (string, required) — must match `PIPELINE_VERSION` (currently `0.0.2`)
+- `name` (string, required) — action name; becomes the CLI subcommand
+- `about` (string, required) — short description for `--help`
+- `notify` (bool, optional) — desktop notification on completion
+- `check` (string, optional) — regex validating the final pipeline result
+- `args` (list, optional) — CLI argument definitions
+- `api` (object, optional) — IDE plugin metadata (ignored by CLI runtime)
+- `actions` (list, required) — pipeline steps
 
 ### Args
 
-| Field     | Type   | Required | Description                                        |
-| --------- | ------ | -------- | -------------------------------------------------- |
-| `name`    | string | yes      | Convention: `arg_` prefix; becomes `--<name>` flag |
-| `short`   | char   | no       | Short flag alias                                   |
-| `input`   | string | yes      | `string`, `bool`, `number`, `path`                 |
-| `default` | string | no       | Default value; makes the arg optional              |
-| `help`    | string | no       | Help text                                          |
+- `name` (string, required) — convention: `arg_` prefix; becomes `--<name>` flag
+- `short` (char, optional) — short flag alias; must be an ASCII letter
+- `input` (string, required) — `string`, `bool`, `number`, `path`
+- `default` (string, optional) — default value; makes the arg optional
+- `help` (string, optional) — help text
 
 ```yaml
 args:
@@ -143,55 +140,51 @@ api:
     arg_file: query_file_path
 ```
 
+- `output` — `replace`, `clipboard`, or `dialog`
+- `input` — main input query tag; must be a known `query_*` key
+- `args` — extra inputs; values must be known `query_*` keys
+
 ### Actions (steps)
 
-| Field    | Type   | Required | Description                                         |
-| -------- | ------ | -------- | --------------------------------------------------- |
-| `tag`    | string | yes      | Unique id, referenced by other steps via `data`     |
-| `run`    | string | yes      | Engine (below)                                      |
-| `val`    | list   | no       | Val candidates                                      |
-| `when`   | string | no       | Action-level guard; skip whole step if false        |
-| `reg`    | string | no       | Regex validating step output; mismatch = hard error |
-| `ask`    | bool   | no       | Confirm before execution (default false)            |
-| `action` | string | yes      | Template with `{name}` placeholders                 |
+- `tag` (string, required) — unique id, referenced by other steps via `data`
+- `run` (string, required) — engine (below)
+- `val` (list, optional) — val candidates
+- `when` (string, optional) — action-level guard; skip whole step if false
+- `reg` (string, optional) — regex validating step output; mismatch = hard error
+- `ask` (bool, optional) — confirm before execution (default false)
+- `action` (string, required) — template with `{name}` placeholders
 
 Run types:
 
-| Value    | Engine                                     |
-| -------- | ------------------------------------------ |
-| `value`  | Literal passthrough, no execution          |
-| `cmd`    | Shell via `sh -c`; values are shell-quoted |
-| `tiny`   | LLM — tiny model (1-3b)                    |
-| `small`  | LLM — small model (3-7b)                   |
-| `medium` | LLM — medium model (7-14b)                 |
-| `large`  | LLM — large model (14b+)                   |
-| `vision` | LLM with extracted base64 images           |
+- `value` — literal passthrough, no execution
+- `cmd` — shell via `sh -c`; values are shell-quoted
+- `tiny` — LLM, tiny model (1-3b)
+- `small` — LLM, small model (3-7b)
+- `medium` — LLM, medium model (7-14b)
+- `large` — LLM, large model (14b+)
+- `vision` — LLM with extracted base64 images
 
 Execution order is resolved by data dependencies (topological sort), not list position. A step that references `tag_x` runs after the step producing `tag_x`.
 
 ### Val candidates
 
-| Field  | Type          | Description                                   |
-| ------ | ------------- | --------------------------------------------- |
-| `name` | string        | Placeholder `{name}` in the `action` template |
-| `data` | string        | Source tag or literal value                   |
-| `mods` | string        | Operator pipe, applied left to right          |
-| `when` | string        | Pre-mods soft guard; skip candidate if false  |
-| `fail` | string        | Post-mods hard guard; abort if false          |
-| `each` | bool / object | Fan-out over list items                       |
+- `name` (string) — placeholder `{name}` in the `action` template
+- `data` (string) — source tag or literal value
+- `mods` (string) — operator pipe, applied left to right
+- `when` (string) — pre-mods soft guard; skip candidate if false
+- `fail` (string) — post-mods hard guard; abort if false
+- `each` (bool / object) — fan-out over list items
 
 - Candidates resolve in order; the first whose `when` passes (or has none) wins.
 - Dead-tag rule: if a step declares multiple names and any one of them has no winning candidate, the whole step is skipped.
 
 ### Data sources
 
-| Prefix     | Source                |
-| ---------- | --------------------- |
-| `query_*`  | User input            |
-| `system_*` | Runtime environment   |
-| `arg_*`    | CLI argument          |
-| `tag_*`    | Another step's result |
-| _(none)_   | Mods-only candidate   |
+- `query_*` — user input
+- `system_*` — runtime environment
+- `arg_*` — CLI argument
+- `tag_*` — another step's result
+- _(none)_ — mods-only candidate
 
 ### Example 1: file path or inline text → LLM
 
@@ -333,84 +326,129 @@ each: { split: '\n', merge: '\x1F' }  # custom separators
 
 Use `merge: '\x1F'` when the result must stay a list for downstream list operators.
 
+List values use a hidden `\x1F` separator internally; it is converted to `\n` whenever a value is substituted into an `action` template or stored as a step result.
+
 ### Guards
 
 `when` and `fail` accept inspect operators only. Every inspect operator supports `:not`.
 
-| Operator             | Meaning                                        |
-| -------------------- | ---------------------------------------------- |
-| `contains:<X>`       | Substring test                                 |
-| `equals:<X>`         | Exact equality                                 |
-| `matches:<re>`       | Regex test                                     |
-| `compare:<mode>:<N>` | Numeric compare; modes `gt` `lt` `gte` `lte`   |
-| `is:<kind>`          | `empty` `num` `int` `bool` `url` `path` `json` |
+- `contains:<X>` — substring test
+- `equals:<X>` — exact equality
+- `matches:<re>` — regex test
+- `compare:<mode>:<N>` — numeric compare; modes `gt` `lt` `gte` `lte`
+- `is:<kind>` — `empty` `num` `int` `bool` `url` `path` `json`
 
 ### Operators (in `mods`)
 
-> Note: `\|` in tables below is an escaped pipe character — in YAML use a plain `|`.
-
 Read (world → value):
 
-| Operator                  | Description                                             |
-| ------------------------- | ------------------------------------------------------- |
-| `ast[:brief\|full\|lang]` | Parse source to JSON AST                                |
-| `fetch`                   | Download URL to temp file, or resolve local path        |
-| `resolve[:dir\|file]`     | Resolve path to absolute                                |
-| `scan`                    | Scan directory → list of file paths                     |
-| `screenshot`              | Interactive capture → image path                        |
-| `text`                    | Extract text from HTML/PDF/image, or base64 passthrough |
+- `ast[:brief|full|lang]` — parse source to JSON AST (`lang` = file extension: `rs`, `py`, `ts`, …)
+- `fetch` — download URL to temp file, or resolve local path
+- `resolve[:dir|file]` — resolve path to absolute
+- `scan` — scan directory → list of file paths
+- `screenshot` — interactive capture → image path
+- `text` — extract text from HTML/PDF/image, or base64 passthrough
 
 Transform (value → value):
 
-| Operator                                          | Description                           |
-| ------------------------------------------------- | ------------------------------------- |
-| `split[:sep]`                                     | Split to list (default newline)       |
-| `join[:sep]`                                      | Collapse list to string               |
-| `item:<N>`                                        | Nth element; negative counts from end |
-| `size`                                            | Item count / byte length              |
-| `filter:<X>` / `filter:eq:<X>` / `filter:not:<X>` | Keep/remove by substring              |
-| `grep:<re>` / `grep:<re>:not`                     | Keep/remove by regex                  |
-| `sort[:asc\|desc]`                                | Sort                                  |
-| `uniq`                                            | Deduplicate                           |
-| `reverse`                                         | Reverse                               |
-| `take:<N>` / `tail:<N>`                           | First / last N                        |
-| `lower` / `upper`                                 | Case conversion                       |
-| `replace:<from>:<to>`                             | Substring replace                     |
-| `trim[:chars]`                                    | Trim ends / drop empty items          |
-| `strip`                                           | Remove Markdown fences                |
-| `default:<X>`                                     | Fallback for empty                    |
-| `base64:encode` / `base64:decode`                 | Base64                                |
-| `format:json\|json5\|yaml\|toml`                  | Format conversion                     |
+- `split[:sep]` — split to list (default newline)
+- `join[:sep]` — collapse list to string
+- `item:<N>` — Nth element; negative counts from end
+- `size` — item count / byte length
+- `filter:<X>` / `filter:eq:<X>` / `filter:not:<X>` — keep/remove by substring
+- `grep:<re>` / `grep:<re>:not` — keep/remove by regex
+- `sort[:asc|desc]` — sort
+- `uniq` — deduplicate
+- `reverse` — reverse
+- `take:<N>` / `tail:<N>` — first / last N
+- `lower` / `upper` — case conversion
+- `replace:<from>:<to>` — substring replace
+- `trim[:chars]` — trim ends / drop empty items
+- `strip` — remove Markdown fences
+- `default:<X>` — fallback for empty
+- `base64:encode` / `base64:decode` — base64
+- `format:json|json5|yaml|toml` — format conversion
 
 Write (pass-through, side effect):
 
-| Operator                             | Description                    |
-| ------------------------------------ | ------------------------------ |
-| `clipboard_text`                     | Copy to clipboard              |
-| `clipboard_image`                    | Copy base64 image to clipboard |
-| `file:<path>` / `file:<path>:append` | Write / append to file         |
+- `clipboard_text` — copy to clipboard
+- `clipboard_image` — copy base64 image to clipboard
+- `file:<path>` / `file:<path>:append` — write / append to file
 
 ### Query tags
 
-`query_raw`, `query_prompt`, `query_clipboard`, `query_clipboard_text`,
-`query_clipboard_path`, `query_clipboard_image`, `query_file_path`,
-`query_project_path`, `query_line`, `query_image`.
+- `query_raw` — raw input, no validation or checks.
+- `query_prompt` — marker only; the app layer prompts the user interactively.
+- `query_clipboard` — combined clipboard by priority: text → paths → image (token-limited).
+- `query_clipboard_text` — raw text from the clipboard.
+- `query_clipboard_path` — copied file paths from the clipboard.
+- `query_clipboard_image` — clipboard image as base64 PNG.
+- `query_file_path` — explicit input → existing file path, else empty.
+- `query_project_path` — explicit input → project root (walks up to a project marker), else empty.
+- `query_line` — explicit input → first line, else empty.
+- `query_image` — explicit input (URL/file/base64) → validated base64; `Err` if invalid.
 
 ### System tags
 
-`system_os`, `system_arch`, `system_hostname`, `system_user`, `system_uid`,
-`system_pid`, `system_shell`, `system_language`, `system_date`,
-`system_time`, `system_datetime`, `system_timestamp`, `system_cpu_cores`,
-`system_mem_available`, `system_dir_home`, `system_dir_pwd`,
-`system_dir_config`, `system_dir_data`, `system_dir_cache`,
-`system_dir_download`, `system_dir_temp`.
+All return a value or an empty string — never an error.
+
+Identity and runtime:
+
+- `system_os` — operating system name (`macos`, `linux`)
+- `system_arch` — CPU architecture (`aarch64`, `x86_64`)
+- `system_hostname` — machine hostname
+- `system_user` — current user name
+- `system_uid` — current user ID
+- `system_pid` — current process ID
+- `system_shell` — shell name from `$SHELL` (basename)
+- `system_language` — language code from `$LANG` (`en_US.UTF-8` → `en`)
+
+Time:
+
+- `system_date` — current date, ISO 8601 (`YYYY-MM-DD`)
+- `system_time` — current time (`HH:MM:SS`)
+- `system_datetime` — current date and time, ISO 8601
+- `system_timestamp` — unix epoch seconds
+
+Hardware and languages:
+
+- `system_cpu_cores` — logical CPU core count
+- `system_mem_available` — available memory in bytes
+- `system_code_langs` — extensions of supported code languages, newline-separated (`rs`, `py`, `ts`, `js`, `java`, `go`, `cs`, `kt`, `swift`, `dart`, `ets`)
+- `system_code_shell` — extensions of supported shell languages, newline-separated (`sh`, `bat`)
+
+Directories (via `dirs`, missing → empty):
+
+- `system_dir_home` — user home
+- `system_dir_pwd` — current working directory
+- `system_dir_config` — user config directory
+- `system_dir_data` — user data directory
+- `system_dir_cache` — user cache directory
+- `system_dir_download` — user downloads directory
+- `system_dir_temp` — temporary directory
 
 ### Placeholders & escapes
 
+Templates (`action`):
+
 - `{name}` — substitutes the resolved val candidate value.
 - `{{X}}` — literal `{X}` (for JSON templates / LLM output).
-- In operator args and `each`: `\n`, `\t`, `\s` are expanded.
-- For `run: cmd`, placeholder values are shell-quoted automatically — do not quote them again.
+
+Operator args (`mods`):
+
+- `{X}` — escapes separators: braces are stripped, `:` and `|` inside survive as data.
+  Example: `join:{|}` joins with a literal `|`.
+- `{name}` — tag interpolation: if `name` is a known tag, its value is substituted
+  (e.g. `file:{tag_path}`). Referencing an unresolved tag is a runtime error —
+  declare it via `data:` in another step first.
+- `\n`, `\t`, `\s` — expanded (also in `each` split/merge).
+
+`run: cmd` specifics:
+
+- Values are shell-quoted automatically — do not quote them again.
+- A multi-line value arrives as one quoted argument; use `for x in $(echo {tag})`
+  to split it back into lines.
+- Non-zero exit fails the step; the error message is the command's stdout or stderr.
 
 ## Validation rules
 
@@ -418,16 +456,20 @@ A group fails to load if any of these is violated:
 
 - `version` does not match `PIPELINE_VERSION`.
 - Empty `name` or `about`.
-- Duplicate action name within the group.
+- Empty `action` template (prompt/command).
+- Empty val candidate `name`.
+- Duplicate action name within the group (same name in different groups is allowed).
 - Action name equals the group name.
-- Action name collides with a system command (`clean`, `status`, `bench`, `stop`).
-- Duplicate `tag` across the file.
-- `data` references its own `tag`.
-- Bare `query` in `data` (use `query_raw`).
+- Top-level (ungrouped) action name collides with a system command (`clean`, `status`, `bench`, `stop`); grouped actions are nested and may collide.
+- Duplicate `tag` or duplicate `arg` name across the file.
+- `data` references its own `tag`, or bare `query` (use `query_raw`).
 - `query_*` / `system_*` used as a tag or arg name.
-- Unknown operator in `mods`.
-- Non-inspect operator in `when` / `fail`.
+- Arg name: letters, numbers, underscores only; `short` is an ASCII letter.
+- `api.input` / `api.args` values must be known `query_*` keys.
+- Unknown operator in `mods`; non-inspect operator in `when` / `fail` (step-level and candidate-level).
+- Empty `split` or `merge` in `each`.
 - Undeclared `{name}` in `action`.
+- Invalid `reg` (step) or `check` (pipeline) regex.
 
 ## Conventions
 

@@ -1,0 +1,48 @@
+version: '0.0.2'
+name: spdx
+about: Check SPDX license headers in source files
+
+api:
+  output: replace
+  input: query_project_path
+
+actions:
+  # Collect path + first lines of every source file (extensions from vibe_ast)
+  - tag: tag_headers
+    run: cmd
+    val:
+      - name: path
+        data: query_project_path
+        fail: 'is:empty:not'
+      - name: exts
+        data: system_code_langs
+    action: >-
+      for ext in $(echo {exts}); do
+        find {path} -type f -name "*.$ext" -not -path '*/target/*' -not -path '*/build/*' -not -path '*/node_modules/*'
+      done | while read -r f; do echo "=== $f"; head -n 5 "$f"; echo; done
+
+  - tag: tag_check
+    run: medium
+    reg: '.+'
+    val:
+      - name: lang
+        data: system_language
+      - name: headers
+        data: tag_headers
+        fail: 'is:empty:not'
+    action: |
+      [Task]
+      Below are source files. Each entry starts with "=== <path>" followed by the first
+      lines of that file. Every file must contain BOTH SPDX lines in its header comment
+      block, matching this syntax:
+      SPDX-FileCopyrightText: Copyright <year> <holder> <contact>
+      SPDX-License-Identifier: <identifier>
+      The lines must sit at the top of the file inside a comment block appropriate for
+      the language, not nested inside code.
+      List every file that is missing either line, has a malformed line, or has the SPDX
+      block in the wrong place; give the reason for each.
+      If all files are valid, output exactly: "OK: all files have valid SPDX headers".
+      Write strictly in {lang}.
+
+      [Files]
+      {headers}

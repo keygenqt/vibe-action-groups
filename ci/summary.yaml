@@ -1,0 +1,37 @@
+version: '0.0.2'
+name: summary
+about: Generate PR description from git diff
+
+api:
+  output: replace
+  input: query_project_path
+
+actions:
+  # Diff of the current branch against the default branch (main or master)
+  - tag: tag_diff
+    run: cmd
+    reg: '.+'
+    val:
+      - name: path
+        data: query_project_path
+        fail: 'is:empty:not'
+    action: cd {path} && git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD
+
+  - tag: tag_summary
+    run: large
+    reg: '.+'
+    val:
+      - name: lang
+        data: system_language
+      - name: diff
+        data: tag_diff
+    action: |
+      [Task]
+      You are a code reviewer. Write a pull request description for the changes below.
+      Structure: one-paragraph summary, then "What changed" and "Why" as bullet lists,
+      then a short "Risks" section (or "None identified").
+      Group related changes; do not walk through the diff line by line.
+      Write strictly in {lang}.
+
+      [Diff]
+      {diff}

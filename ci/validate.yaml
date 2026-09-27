@@ -1,0 +1,40 @@
+version: '0.0.2'
+name: validate
+about: Find obvious errors in diff before review
+
+api:
+  output: replace
+  input: query_project_path
+
+actions:
+  # Diff of the current branch against the default branch (main or master)
+  - tag: tag_diff
+    run: cmd
+    reg: '.+'
+    val:
+      - name: path
+        data: query_project_path
+        fail: 'is:empty:not'
+    action: cd {path} && git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD
+
+  - tag: tag_findings
+    run: medium
+    reg: '.+'
+    val:
+      - name: lang
+        data: system_language
+      - name: diff
+        data: tag_diff
+    action: |
+      [Task]
+      You are a pre-review check for a pull request. Scan the diff below and report only
+      clear, actionable problems: obvious bugs and logic errors, typos in identifiers or
+      user-facing strings, leftover TODO/FIXME/debug code, commented-out blocks,
+      broken formatting of structured data.
+      Output a numbered list: file, line context, problem, suggested fix.
+      Do not report style preferences or speculative issues.
+      If nothing is found, output exactly: "No issues found".
+      Write strictly in {lang}.
+
+      [Diff]
+      {diff}
