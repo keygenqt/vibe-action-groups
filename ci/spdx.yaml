@@ -7,7 +7,7 @@ api:
   input: query_project_path
 
 actions:
-  # Collect path + first lines of every source file (extensions from vibe_ast)
+  # Collect path + first lines of source files changed in the current branch (extensions from vibe_ast)
   - tag: tag_headers
     run: cmd
     val:
@@ -17,9 +17,12 @@ actions:
       - name: exts
         data: system_code_langs
     action: >-
-      for ext in $(echo {exts}); do
-        find {path} -type f -name "*.$ext" -not -path '*/target/*' -not -path '*/build/*' -not -path '*/node_modules/*'
-      done | while read -r f; do echo "=== $f"; head -n 5 "$f"; echo; done
+      cd {path} && git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD
+      --name-only --diff-filter=ACMR | while read -r f; do
+        for ext in $(echo {exts}); do
+          case "$f" in *."$ext") echo "=== $f"; head -n 5 "$f"; echo;; esac
+        done
+      done
 
   - tag: tag_check
     run: medium
@@ -39,9 +42,16 @@ actions:
       SPDX-License-Identifier: <identifier>
       The lines must sit at the top of the file inside a comment block appropriate for
       the language, not nested inside code.
-      List every file that is missing either line, has a malformed line, or has the SPDX
-      block in the wrong place; give the reason for each.
-      If all files are valid, output exactly: "OK: all files have valid SPDX headers".
+      For EVERY file listed below output exactly one line:
+      <path>: OK
+      or
+      <path>: <all problems found, comma-separated — e.g. "missing copyright line, missing license line">
+      After the list output a final line:
+      "FAIL: N file(s) have invalid SPDX headers" with the actual count,
+      or "OK: all files have valid SPDX headers" ONLY if every line above says OK.
+      Never output the OK line when any file has problems.
+      Output PLAIN TEXT only: no markdown, no code fences, no backticks,
+      no bold or headers. Quote code inline as-is without any formatting.
       Write strictly in {lang}.
 
       [Files]

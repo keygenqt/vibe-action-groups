@@ -31,6 +31,8 @@ actions:
       Structure: one-paragraph summary, then "What changed" and "Why" as bullet lists,
       then a short "Risks" section (or "None identified").
       Group related changes; do not walk through the diff line by line.
+      Output PLAIN TEXT only: no markdown, no code fences, no backticks,
+      no bold or headers. Section names as plain lines, bullets as plain "-" lines.
       Write strictly in {lang}.
 
       [Diff]

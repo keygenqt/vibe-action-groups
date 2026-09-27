@@ -18,7 +18,7 @@ actions:
     action: cd {path} && git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD
 
   - tag: tag_findings
-    run: medium
+    run: large
     reg: '.+'
     val:
       - name: lang
@@ -27,13 +27,28 @@ actions:
         data: tag_diff
     action: |
       [Task]
-      You are a pre-review check for a pull request. Scan the diff below and report only
-      clear, actionable problems: obvious bugs and logic errors, typos in identifiers or
-      user-facing strings, leftover TODO/FIXME/debug code, commented-out blocks,
-      broken formatting of structured data.
-      Output a numbered list: file, line context, problem, suggested fix.
+      You are a pre-review check for a pull request. Report only clear, actionable
+      problems: obvious bugs and logic errors, typos in identifiers or user-facing
+      strings, leftover TODO/FIXME/debug code, commented-out blocks, references to
+      missing dependencies, broken formatting of structured data.
+      Go through the diff file by file. Check specifically for: leftover TODO/FIXME,
+      debug prints, commented-out code, typos in identifiers or strings, references to
+      missing dependencies, obvious logic errors.
+      Commented-out code means real code lines disabled by comments.
+      Example: "// let x = compute();" IS commented-out code.
+      Example: "// New feature: print current time" is an explanation comment — NOT an issue.
+      Do not report documentation or explanation comments.
+      For EVERY file in the diff output a section:
+      <path>: <numbered findings: line context without diff markers, problem, suggested fix>
+      or exactly:
+      <path>: OK
       Do not report style preferences or speculative issues.
-      If nothing is found, output exactly: "No issues found".
+      Output PLAIN TEXT only: no markdown, no code fences, no backticks,
+      no bold or headers. Quote code inline as-is without any formatting.
+      After the per-file sections output a final line:
+      "FAIL: N file(s) with issues" with the actual count,
+      or "No issues found" ONLY if every section above says OK.
+      Never output "No issues found" when any section lists findings.
       Write strictly in {lang}.
 
       [Diff]
