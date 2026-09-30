@@ -43,6 +43,8 @@ actions:
       or exactly:
       <path>: OK
       Do not report style preferences or speculative issues.
+      Do not review CI/workflow configuration files — application code only.
+      Report an issue ONLY if you are certain it is real; when unsure, output OK.
       Output PLAIN TEXT only: no markdown, no code fences, no backticks,
       no bold or headers. Quote code inline as-is without any formatting.
       After the per-file sections output a final line:
