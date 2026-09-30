@@ -7,7 +7,9 @@ api:
   input: query_project_path
 
 actions:
-  # Diff of the current branch against the default branch (main or master)
+  # Diff of the current branch against the default branch, code languages only
+  # (extensions from vibe_ast) — CI configs, docs and other non-code files
+  # are out of scope for review.
   - tag: tag_diff
     run: cmd
     reg: '.+'
@@ -15,7 +17,12 @@ actions:
       - name: path
         data: query_project_path
         fail: 'is:empty:not'
-    action: cd {path} && git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD
+      - name: exts
+        data: system_code_langs
+    action: >-
+      cd {path} && out=""; for ext in $(echo {exts}); do
+        out="$out$(git diff $(git rev-parse --verify -q main || git rev-parse --verify -q master)...HEAD -- "*.$ext")";
+      done; [ -n "$out" ] && printf '%s' "$out" || echo 'No code files in diff'
 
   - tag: tag_findings
     run: large
@@ -43,8 +50,6 @@ actions:
       or exactly:
       <path>: OK
       Do not report style preferences or speculative issues.
-      Do not review CI/workflow configuration files — application code only.
-      Report an issue ONLY if you are certain it is real; when unsure, output OK.
       Output PLAIN TEXT only: no markdown, no code fences, no backticks,
       no bold or headers. Quote code inline as-is without any formatting.
       After the per-file sections output a final line:
