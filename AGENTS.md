@@ -108,7 +108,6 @@ actions:
 - `name` (string, required) — action name; becomes the CLI subcommand
 - `about` (string, required) — short description for `--help`
 - `notify` (bool, optional) — desktop notification on completion
-- `check` (string, optional) — regex validating the final pipeline result
 - `args` (list, optional) — CLI argument definitions
 - `api` (object, optional) — IDE plugin metadata (ignored by CLI runtime)
 - `actions` (list, required) — pipeline steps
@@ -149,7 +148,7 @@ api:
 - `tag` (string, required) — unique id, referenced by other steps via `data`
 - `run` (string, required) — engine (below)
 - `val` (list, optional) — val candidates
-- `when` (string, optional) — action-level guard; skip whole step if false
+- `off` (object, optional) — skip condition (`data` + `when`); when it passes, the step is skipped (dead tag, resolves to empty)
 - `reg` (string, optional) — regex validating step output; mismatch = hard error
 - `ask` (bool, optional) — confirm before execution (default false)
 - `action` (string, required) — template with `{name}` placeholders
@@ -176,15 +175,18 @@ Execution order is resolved by data dependencies (topological sort), not list po
 - `each` (bool / object) — fan-out over list items
 
 - Candidates resolve in order; the first whose `when` passes (or has none) wins.
-- Dead-tag rule: if a step declares multiple names and any one of them has no winning candidate, the whole step is skipped.
+- If any name has no winning candidate, the pipeline aborts with an error —
+  add a fallback candidate or declare the skip with `off`.
 
 ### Data sources
 
-- `query_*` — user input
-- `system_*` — runtime environment
-- `arg_*` — CLI argument
-- `tag_*` — another step's result
+- `query_*` — user input (reserved prefix)
+- `system_*` — runtime environment (reserved prefix)
+- CLI argument — the argument's own name
+- another step's result — the referenced `tag`
 - _(none)_ — mods-only candidate
+
+Only `query_*` and `system_*` are reserved prefixes; `arg_` and `tag_` are conventions, not rules.
 
 ### Example 1: file path or inline text → LLM
 
@@ -279,16 +281,16 @@ actions:
 
 The third candidate has no `data` — it is a mods-only candidate (`screenshot` is a read operator, no input needed).
 
-### Example 4: dead-tag guard (dry-run)
+### Example 4: skip guard (dry-run)
 
 ```yaml
 - tag: tag_commit_exec
   run: cmd
   ask: true
+  off:
+    data: arg_dry_run
+    when: 'equals:true'
   val:
-    - name: dry
-      data: arg_dry_run
-      when: 'contains:false'
     - name: path
       data: tag_project_path
     - name: msg
@@ -297,7 +299,7 @@ The third candidate has no `data` — it is a mods-only candidate (`screenshot` 
   action: cd {path} && git add . && git commit -m {msg}
 ```
 
-When `arg_dry_run` is `true`, the `dry` candidate fails its `when`, no candidate wins for `dry`, and the whole step becomes a dead tag and is skipped.
+When `arg_dry_run` is `true`, the `off` guard passes → dead tag → the step is skipped (no execution, no `ask` confirmation). Downstream `{tag_commit_exec}` placeholders expand to an empty string.
 
 ### Example 5: operator chain and writing to a file
 
@@ -460,22 +462,24 @@ A group fails to load if any of these is violated:
 - Empty val candidate `name`.
 - Duplicate action name within the group (same name in different groups is allowed).
 - Action name equals the group name.
-- Top-level (ungrouped) action name collides with a system command (`clean`, `status`, `bench`, `stop`); grouped actions are nested and may collide.
+- Action name collides with a system command (`clean`, `status`, `bench`, `stop`) — applies to grouped actions too.
 - Duplicate `tag` or duplicate `arg` name across the file.
 - `data` references its own `tag`, or bare `query` (use `query_raw`).
 - `query_*` / `system_*` used as a tag or arg name.
 - Arg name: letters, numbers, underscores only; `short` is an ASCII letter.
 - `api.input` / `api.args` values must be known `query_*` keys.
-- Unknown operator in `mods`; non-inspect operator in `when` / `fail` (step-level and candidate-level).
+- Unknown operator in `mods`; non-inspect operator in `when` / `fail` / `off.when`.
+- `off.data` is empty, references its own `tag`, bare `query`, or an unknown tag.
 - Empty `split` or `merge` in `each`.
 - Undeclared `{name}` in `action`.
-- Invalid `reg` (step) or `check` (pipeline) regex.
+- Invalid `reg` regex.
 
 ## Conventions
 
 - Folder name = group name; file name = action name.
 - Prefix argument names with `arg_`.
 - Use `when` guards to avoid unnecessary work; `fail` guards to catch bad input before the LLM.
+- Use `off` to declare conditional steps (dry-run, optional stages).
 - Use `ask: true` for destructive shell commands.
 - `reg: '.+'` catches empty results from a loose LLM.
 - Keep prompts in English; write action `name`/`about` in English.

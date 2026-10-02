@@ -179,18 +179,14 @@ actions:
       [Per-file summaries]
       {summaries}
 
-  # Actual commit — dead-tagged (skipped) in dry-run mode via when guard.
-  # ask only fires when the action is not dead-tagged.
+  # Actual commit — `off` skips it in dry-run mode (dead tag → `ask` never fires).
   - tag: tag_commit_exec
     run: cmd
     ask: true
+    off:
+      data: arg_dry_run
+      when: 'equals:true'
     val:
-      # Dead-tag guard: `dry` is not used in action, it's a switch.
-      # If ANY val candidate fails its `when`, the whole tag resolves
-      # to an empty string (dead tag) and the action never runs.
-      - name: dry
-        data: arg_dry_run
-        when: 'contains:false'
       - name: path
         data: tag_project_path
       - name: msg
