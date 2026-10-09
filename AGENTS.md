@@ -380,7 +380,7 @@ Write (pass-through, side effect):
 ### Query tags
 
 - `query_raw` — raw input, no validation or checks.
-- `query_prompt` — marker only; the app layer prompts the user interactively.
+- `query_prompt` — interactive input: if used as a data source, the app prompts the user at runtime and the answer becomes the value.
 - `query_clipboard` — combined clipboard by priority: text → paths → image (token-limited).
 - `query_clipboard_text` — raw text from the clipboard.
 - `query_clipboard_path` — copied file paths from the clipboard.
